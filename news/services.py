@@ -3,6 +3,13 @@ from .models import NewsSource, Article
 import feedparser
 from datetime import datetime
 import time
+import requests
+
+
+
+UA = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+}
 
 
 def _entry_published_dt(entry) -> datetime:
@@ -18,7 +25,11 @@ def _entry_published_dt(entry) -> datetime:
 
 def fetch_source_articles(source: NewsSource) -> int:
     created_count = 0
-    parsed = feedparser.parse(source.rss_url)
+    
+    resp = requests.get(source.rss_url, headers=UA, timeout=15)
+    resp.raise_for_status()
+    
+    parsed = feedparser.parse(resp.content)
     
     
     for e in parsed.entries:
@@ -38,7 +49,7 @@ def fetch_source_articles(source: NewsSource) -> int:
                 "summary": summary,
             }
         )
-        if created:
+        if created: 
             created_count += 1
     return created_count
     
