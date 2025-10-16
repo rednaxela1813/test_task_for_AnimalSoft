@@ -1,0 +1,94 @@
+services:
+  web:
+    build: .
+    container_name: rssdigest_web
+    environment:
+      DJANGO_CREATE_SUPERUSER: "1"
+    command: ["bash","-lc","./entrypoint.sh python manage.py runserver 0.0.0.0:8000"]
+    env_file:
+      - ./.env
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/admin/ || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+
+
+  worker:
+    build: .
+    container_name: rssdigest_worker
+    
+    command: bash -c "./entrypoint.sh celery -A config worker -l info"
+    env_file:
+      - ./.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    environment:
+      DJANGO_CREATE_SUPERUSER: "0"
+
+  beat:
+    build: .
+    container_name: rssdigest_beat
+    
+    command: bash -c "./entrypoint.sh celery -A config beat -l info"
+    env_file:
+      - ./.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - .:/app
+    environment:
+      DJANGO_CREATE_SUPERUSER: "0"
+
+  redis:
+    image: redis:7-alpine
+    container_name: rssdigest_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 2s
+
+  db:
+    image: postgres:16-alpine
+    container_name: rssdigest_db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rssdigest}
+      POSTGRES_USER: ${POSTGRES_USER:-rssuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rsspass}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rssuser} -d ${POSTGRES_DB:-rssdigest}"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  pg_data:
+
+
