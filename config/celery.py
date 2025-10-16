@@ -6,7 +6,7 @@ from decouple import config
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
-time_interval = config('TIME_INTERVAL', default=15, cast=int)
+time_interval = config('CELERY_TIME_INTERVAL', default=15, cast=int)
 
 app = Celery('config')
 app.config_from_object('django.conf:settings', namespace='CELERY')

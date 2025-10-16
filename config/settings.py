@@ -75,12 +75,24 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if config("POSTGRES_HOST"):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": config("POSTGRES_DB", "rssdigest"),
+            "USER": config("POSTGRES_USER", "rssuser"),
+            "PASSWORD": config("POSTGRES_PASSWORD", "rsspass"),
+            "HOST": config("POSTGRES_HOST", "db"),
+            "PORT": config("POSTGRES_PORT", "5432"),
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
@@ -107,7 +119,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'Europe/Bratislava'
+TIME_ZONE = config('TIME_ZONE', default='Europe/Bratislava')
 
 USE_I18N = True
 
@@ -131,3 +143,4 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CELERY_BROKER_URL = config('CELERY_BROKER_URL', "redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', "redis://localhost:6379/1")
 CELERY_TIMEZONE = TIME_ZONE
+CELERY_BEAT_SCHEDULE_MINUTES = config('CELERY_BEAT_SCHEDULE_MINUTES', default=15, cast=int)
