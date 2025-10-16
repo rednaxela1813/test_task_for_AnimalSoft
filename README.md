@@ -1,154 +1,96 @@
-RSS Digest — Django + Celery
+# 📰 RSS Digest — Django + Celery + Redis + PostgreSQL
 
-A small Django application that allows an admin to manage RSS news sources, periodically fetch articles using Celery, and manually curate article digests for internal use.
+RSS Digest is a minimal Django-based backend application that periodically fetches and stores news articles from multiple RSS sources.  
+It demonstrates background task processing with Celery and Redis, containerized deployment using Docker Compose, and robust error handling.
 
-Features
+---
 
-Models:
-NewsSource, Article, Digest, DigestArticle (many-to-many through model).
+## 🧩 Features
 
-Admin Interface:
-Add news sources, view fetched articles, and manually create digests with inline article selection.
+- Django 5 + PostgreSQL (persistent storage)
+- Celery workers + Celery Beat (scheduled RSS updates)
+- Redis (message broker + result backend)
+- Automatic periodic fetching every 15 minutes
+- Graceful error handling for broken or unreachable RSS feeds
+- Easy management via Django Admin (`/admin`)
+- Fully containerized with Docker Compose
 
-Article Fetching:
+---
 
-Manual: via management command python manage.py fetch_articles
-
-Automatic: via Celery periodic tasks (Celery Beat).
-
-Duplicate Prevention:
-Unique database constraint on (source, link).
-
-Time Zone:
-Europe/Bratislava, USE_TZ=True
+## 🏗️ Project Structure
 
 
-Tech Stack
+---
 
-Python 3.11+ (works with 3.13)
+## ⚙️ Environment Variables (`.env`)
 
-Django 5.x
+Example:
 
-Celery 5.x
+```env
+DEBUG=True
+SECRET_KEY=dev-secret-key
+ALLOWED_HOSTS=*
 
-Redis (as broker and result backend)
+POSTGRES_DB=rssdigest
+POSTGRES_USER=rssuser
+POSTGRES_PASSWORD=rsspass
+POSTGRES_HOST=db
+POSTGRES_PORT=5432
 
-feedparser + requests (RSS fetching and parsing)
+REDIS_URL=redis://redis:6379/0
 
+DJANGO_SUPERUSER_USERNAME=admin
+DJANGO_SUPERUSER_EMAIL=admin@example.com
+DJANGO_SUPERUSER_PASSWORD=admin123
 
-Quick Start (Local, without Docker)
+docker compose up --build
 
-python -m venv .venv
-source .venv/bin/activate
+This launches:
 
-pip install -r requirements.txt
+Service	Description
+web	Django app (runserver)
+worker	Celery worker processing tasks
+beat	Celery Beat scheduler (runs every 15 min)
+db	PostgreSQL
+redis	Redis (broker + result backend)
 
-python manage.py migrate
-python manage.py createsuperuser
+Then visit:
+👉 http://localhost:8000/admin
 
-python manage.py runserver
-# http://127.0.0.1:8000/        → public article list
-# http://127.0.0.1:8000/admin/ → Django admin
+and log in using credentials from .env
 
-1. Add RSS Sources
-Go to /admin, open News Sources, and add one or more feeds.
-Make sure they are marked as active=True.
+How It Works
 
-Example RSS feeds:
+Add RSS sources in Django Admin → News Sources
+e.g.
 
 https://feeds.bbci.co.uk/news/world/rss.xml
 
 https://hnrss.org/frontpage
 
-https://feeds.reuters.com/reuters/topNews
+https://www.theguardian.com/world/rss
+
+Celery Beat triggers fetch_all_sources every 15 minutes.
+Each source is fetched by the worker, parsed via feedparser, and stored in the database.
+
+The system gracefully ignores:
+
+Broken links
+
+Fetch all active sources manually:
+
+docker compose exec web python manage.py fetch_articles
 
 
-2. Manually Fetch Articles
-
-python manage.py fetch_articles
-
-Background Processing (Celery)
-Start Redis Broker
-
-Option 1: Docker
-
-docker run -d --name redis -p 6379:6379 redis:7-alpine
-
-Option 2: macOS / Homebrew
-
-brew install redis
-brew services start redis
-
-Make sure these lines exist in config/settings.py or your .env:
-
-CELERY_BROKER_URL = "redis://localhost:6379/0"
-CELERY_RESULT_BACKEND = "redis://localhost:6379/1"
-
-Run Celery Worker
-
-celery -A config worker -l info
-
-Environment Variables (.env)
-
-Example:
-
-DJANGO_DEBUG=1
-DJANGO_SECRET_KEY=dev-secret-key-change-me
-DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
-
-CELERY_BROKER_URL=redis://localhost:6379/0
-CELERY_RESULT_BACKEND=redis://localhost:6379/1
-CELERY_BEAT_SCHEDULE_MINUTES=15
-TIME_ZONE=Europe/Bratislava
-TIME_INTERVAL=15
-
-
-Database Structure
-
-NewsSource(name, rss_url, active)
-
-Article(source→NewsSource, title, link, published, summary)
-
-Unique constraint: (source, link)
-
-Digest(name, created_at)
-
-DigestArticle(digest→Digest, article→Article)
-
-Unique constraint: (digest, article)
-
-
-Admin Workflow
-
-Add one or more RSS sources and activate them.
-
-Run the fetch command or wait for Celery to process them.
-
-Check Articles in the admin panel.
-
-Create a Digest, and use the inline relation to attach selected articles.
-
-Example Fixture (Optional)
-
-news/fixtures/sources.json
-
-[
-  {"model": "news.newssource", "pk": 1, "fields": {"name": "BBC World", "rss_url": "https://feeds.bbci.co.uk/news/world/rss.xml", "active": true}},
-  {"model": "news.newssource", "pk": 2, "fields": {"name": "Hacker News", "rss_url": "https://hnrss.org/frontpage", "active": true}}
-]
-
-Load it:
-python manage.py loaddata news/fixtures/sources.json
-
-License
-
-MIT (or specify your own).
-
-Author
+🧑‍💻 Author
 
 Alexander Kiselev
-Email: rednaxela1813@gmail.com
+📍 Slovakia
+📧 rednaxela1813@gmail.com
 
-Based in Slovakia 🇸🇰
-Focus: Django, Vue, SaaS, and automation tools.
+🌐 https://deilmann.sk
+
+🧾 License
+
+MIT — feel free to reuse this template for educational or demonstration purposes.
 
