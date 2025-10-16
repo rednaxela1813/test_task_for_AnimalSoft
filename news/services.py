@@ -26,8 +26,11 @@ def _entry_published_dt(entry) -> datetime:
 def fetch_source_articles(source: NewsSource) -> int:
     created_count = 0
     
-    resp = requests.get(source.rss_url, headers=UA, timeout=15)
-    resp.raise_for_status()
+    try:
+        resp = requests.get(source.rss_url, headers=UA, timeout=15)
+        resp.raise_for_status()
+    except Exception:
+        return created_count
     
     parsed = feedparser.parse(resp.content)
     
